@@ -40,28 +40,57 @@ public class ThreadingBenchmark {
   private ExecutorService platformExecutor;
   private ExecutorService virtualExecutor;
 
+  /**
+   * 初始化可复用的线程执行器。
+   */
   @Setup
   public void setUp() {
     platformExecutor = Executors.newFixedThreadPool(platformPoolSize);
     virtualExecutor = Executors.newVirtualThreadPerTaskExecutor();
   }
 
+  /**
+   * 关闭每轮基准使用的线程执行器。
+   */
   @TearDown
   public void tearDown() {
     platformExecutor.shutdownNow();
     virtualExecutor.shutdownNow();
   }
 
+  /**
+   * 使用固定大小的平台线程池执行阻塞任务。
+   */
   @Benchmark
   public int platformThreads() throws Exception {
     return runBlockingTasks(platformExecutor);
   }
 
+  /**
+   * 使用每任务一个平台线程执行阻塞任务。
+   */
+  @Benchmark
+  public int platformThreadPerTask() throws Exception {
+    ExecutorService executor = Executors.newThreadPerTaskExecutor(
+        Thread.ofPlatform().name("jmh-platform-task-", 0).factory());
+    try {
+      return runBlockingTasks(executor);
+    } finally {
+      executor.shutdownNow();
+    }
+  }
+
+  /**
+   * 使用每任务一个虚拟线程执行阻塞任务。
+   */
   @Benchmark
   public int virtualThreads() throws Exception {
     return runBlockingTasks(virtualExecutor);
   }
 
+  /**
+   * 提交一批阻塞任务并等待所有任务完成。
+   */
   private int runBlockingTasks(ExecutorService executor) throws Exception {
     List<Future<Integer>> futures = new ArrayList<>(taskCount);
 
